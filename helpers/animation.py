@@ -59,11 +59,11 @@ def vid2frames(video_path, frames_path, n=1, overwrite=True):
 def getRotationMatrixManual(rotation_angles):
 	
     rotation_angles = [np.deg2rad(x) for x in rotation_angles]
-    
+
     phi         = rotation_angles[0] # around x
     gamma       = rotation_angles[1] # around y
     theta       = rotation_angles[2] # around z
-    
+
     # X rotation
     Rphi        = np.eye(4,4)
     sp          = np.sin(phi)
@@ -72,7 +72,7 @@ def getRotationMatrixManual(rotation_angles):
     Rphi[2,2]   = Rphi[1,1]
     Rphi[1,2]   = -sp
     Rphi[2,1]   = sp
-    
+
     # Y rotation
     Rgamma        = np.eye(4,4)
     sg            = np.sin(gamma)
@@ -81,7 +81,7 @@ def getRotationMatrixManual(rotation_angles):
     Rgamma[2,2]   = Rgamma[0,0]
     Rgamma[0,2]   = sg
     Rgamma[2,0]   = -sg
-    
+
     # Z rotation (in-image-plane)
     Rtheta      = np.eye(4,4)
     st          = np.sin(theta)
@@ -90,10 +90,8 @@ def getRotationMatrixManual(rotation_angles):
     Rtheta[1,1] = Rtheta[0,0]
     Rtheta[0,1] = -st
     Rtheta[1,0] = st
-    
-    R           = reduce(lambda x,y : np.matmul(x,y), [Rphi, Rgamma, Rtheta]) 
-    
-    return R
+
+    return reduce(lambda x,y : np.matmul(x,y), [Rphi, Rgamma, Rtheta])
 
 def getPoints_for_PerspectiveTranformEstimation(ptsIn, ptsOut, W, H, sidelength):
     
@@ -101,16 +99,16 @@ def getPoints_for_PerspectiveTranformEstimation(ptsIn, ptsOut, W, H, sidelength)
     ptsOut2D     =  ptsOut[0,:]
     ptsOut2Dlist =  []
     ptsIn2Dlist  =  []
-    
-    for i in range(0,4):
+
+    for i in range(4):
         ptsOut2Dlist.append([ptsOut2D[i,0], ptsOut2D[i,1]])
         ptsIn2Dlist.append([ptsIn2D[i,0], ptsIn2D[i,1]])
-    
+
     pin  =  np.array(ptsIn2Dlist)   +  [W/2.,H/2.]
     pout = (np.array(ptsOut2Dlist)  +  [1.,1.]) * (0.5*sidelength)
     pin  = pin.astype(np.float32)
     pout = pout.astype(np.float32)
-    
+
     return pin, pout
 
 
@@ -163,11 +161,7 @@ def warpMatrix(W, H, theta, phi, gamma, scale, fV):
     return M33, sideLength
 
 def anim_frame_warp(prev, args, anim_args, keys, frame_idx, depth_model=None, depth=None, device='cuda'):
-    if isinstance(prev, np.ndarray):
-        prev_img_cv2 = prev
-    else:
-        prev_img_cv2 = sample_to_cv2(prev)
-
+    prev_img_cv2 = prev if isinstance(prev, np.ndarray) else sample_to_cv2(prev)
     if anim_args.use_depth_warping:
         if depth is None and depth_model is not None:
             depth = depth_model.predict(prev_img_cv2, anim_args)
@@ -178,7 +172,7 @@ def anim_frame_warp(prev, args, anim_args, keys, frame_idx, depth_model=None, de
         prev_img = anim_frame_warp_2d(prev_img_cv2, args, anim_args, keys, frame_idx)
     else: # '3D'
         prev_img = anim_frame_warp_3d(device, prev_img_cv2, depth, anim_args, keys, frame_idx)
-                
+
     return prev_img, depth
 
 def anim_frame_warp_2d(prev_img_cv2, args, anim_args, keys, frame_idx):
@@ -265,12 +259,12 @@ def transform_image_3d(device, prev_img_cv2, depth_tensor, rot_mat, translate, a
         align_corners=False
     )
 
-    # convert back to cv2 style numpy array
-    result = rearrange(
-        new_image.squeeze().clamp(0,255), 
-        'c h w -> h w c'
-    ).cpu().numpy().astype(prev_img_cv2.dtype)
-    return result
+    return (
+        rearrange(new_image.squeeze().clamp(0, 255), 'c h w -> h w c')
+        .cpu()
+        .numpy()
+        .astype(prev_img_cv2.dtype)
+    )
 
 class DeformAnimKeys():
     def __init__(self, anim_args):
@@ -301,9 +295,9 @@ class DeformAnimKeys():
 
 def get_inbetweens(key_frames, max_frames, integer=False, interp_method='Linear'):
     import numexpr
-    key_frame_series = pd.Series([np.nan for a in range(max_frames)])
-    
-    for i in range(0, max_frames):
+    key_frame_series = pd.Series([np.nan for _ in range(max_frames)])
+
+    for i in range(max_frames):
         if i in key_frames:
             value = key_frames[i]
             value_is_number = check_is_number(value)
@@ -315,18 +309,16 @@ def get_inbetweens(key_frames, max_frames, integer=False, interp_method='Linear'
             t = i
             key_frame_series[i] = numexpr.evaluate(value)
     key_frame_series = key_frame_series.astype(float)
-    
+
     if interp_method == 'Cubic' and len(key_frames.items()) <= 3:
-        interp_method = 'Quadratic'    
+        interp_method = 'Quadratic'
     if interp_method == 'Quadratic' and len(key_frames.items()) <= 2:
         interp_method = 'Linear'
-          
+
     key_frame_series[0] = key_frame_series[key_frame_series.first_valid_index()]
     key_frame_series[max_frames-1] = key_frame_series[key_frame_series.last_valid_index()]
     key_frame_series = key_frame_series.interpolate(method=interp_method.lower(), limit_direction='both')
-    if integer:
-        return key_frame_series.astype(int)
-    return key_frame_series
+    return key_frame_series.astype(int) if integer else key_frame_series
 
 def parse_key_frames(string, prompt_parser=None):
     # because math functions (i.e. sin(t)) can utilize brackets 
@@ -334,14 +326,12 @@ def parse_key_frames(string, prompt_parser=None):
     # which has previously been enclosed with brackets and
     # with a comma or end of line existing after the closing one
     pattern = r'((?P<frame>[0-9]+):[\s]*\((?P<param>[\S\s]*?)\)([,][\s]?|[\s]?$))'
-    frames = dict()
+    frames = {}
     for match_object in re.finditer(pattern, string):
         frame = int(match_object.groupdict()['frame'])
         param = match_object.groupdict()['param']
-        if prompt_parser:
-            frames[frame] = prompt_parser(param)
-        else:
-            frames[frame] = param
-    if frames == {} and len(string) != 0:
+        frames[frame] = prompt_parser(param) if prompt_parser else param
+    if frames or len(string) == 0:
+        return frames
+    else:
         raise RuntimeError('Key Frame string not correctly formatted')
-    return frames

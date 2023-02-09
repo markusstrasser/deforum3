@@ -48,7 +48,7 @@ def make_clip_loss_fn(root, args):
     def parse_prompt(prompt):
         if prompt.startswith('http://') or prompt.startswith('https://'):
             vals = prompt.rsplit(':', 2)
-            vals = [vals[0] + ':' + vals[1], *vals[2:]]
+            vals = [f'{vals[0]}:{vals[1]}', *vals[2:]]
         else:
             vals = prompt.rsplit(':', 1)
         vals = vals + ['', '1'][len(vals):]
@@ -99,9 +99,7 @@ def make_aesthetics_loss_fn(root,args):
 
 # blue loss from @johnowhitaker's tutorial on Grokking Stable Diffusion
 def blue_loss_fn(x, sigma, **kwargs):
-  # How far are the blue channel values to 0.9:
-  error = torch.abs(x[:,-1, :, :] - 0.9).mean() 
-  return error
+    return torch.abs(x[:,-1, :, :] - 0.9).mean()
 
 # MSE loss from init
 def make_mse_loss(target):
@@ -117,12 +115,10 @@ def exposure_loss(target):
     return exposure_loss_fn
 
 def mean_loss_fn(x, sigma, **kwargs):
-  error = torch.abs(x).mean() 
-  return error
+    return torch.abs(x).mean()
 
 def var_loss_fn(x, sigma, **kwargs):
-  error = x.var()
-  return error
+    return x.var()
 
 def get_color_palette(root, n_colors, target, verbose=False):
     def display_color_palette(color_list):

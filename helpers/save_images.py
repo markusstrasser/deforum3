@@ -51,10 +51,10 @@ def save_samples(
         # to image
         grid = 255.0 * rearrange(grid, "c h w -> h w c").cpu().numpy()
         grid_image = Image.fromarray(grid.astype(np.uint8))
-        if args.save_grid:
-            grid_image.save(
-                os.path.join(args.outdir, f"{args.timestring}_{seed}_grid.png")
-            )
+    if args.save_grid:
+        grid_image.save(
+            os.path.join(args.outdir, f"{args.timestring}_{seed}_grid.png")
+        )
 
     # return grid_image and individual sample images
     return grid_image, images

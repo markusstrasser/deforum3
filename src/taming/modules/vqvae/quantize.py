@@ -206,8 +206,7 @@ class GumbelQuantize(nn.Module):
         if self.remap is not None:
             indices = self.unmap_to_all(indices)
         one_hot = F.one_hot(indices, num_classes=self.n_embed).permute(0, 3, 1, 2).float()
-        z_q = einsum('b n h w, n d -> b d h w', one_hot, self.embed.weight)
-        return z_q
+        return einsum('b n h w, n d -> b d h w', one_hot, self.embed.weight)
 
 
 class VectorQuantizer2(nn.Module):
@@ -278,8 +277,8 @@ class VectorQuantizer2(nn.Module):
         # distances from z to embeddings e_j (z - e)^2 = z^2 + e^2 - 2 e * z
 
         d = torch.sum(z_flattened ** 2, dim=1, keepdim=True) + \
-            torch.sum(self.embedding.weight**2, dim=1) - 2 * \
-            torch.einsum('bd,dn->bn', z_flattened, rearrange(self.embedding.weight, 'n d -> d n'))
+                torch.sum(self.embedding.weight**2, dim=1) - 2 * \
+                torch.einsum('bd,dn->bn', z_flattened, rearrange(self.embedding.weight, 'n d -> d n'))
 
         min_encoding_indices = torch.argmin(d, dim=1)
         z_q = self.embedding(min_encoding_indices).view(z.shape)
@@ -287,13 +286,13 @@ class VectorQuantizer2(nn.Module):
         min_encodings = None
 
         # compute loss for embedding
-        if not self.legacy:
-            loss = self.beta * torch.mean((z_q.detach()-z)**2) + \
-                   torch.mean((z_q - z.detach()) ** 2)
-        else:
-            loss = torch.mean((z_q.detach()-z)**2) + self.beta * \
-                   torch.mean((z_q - z.detach()) ** 2)
-
+        loss = (
+            torch.mean((z_q.detach() - z) ** 2)
+            + self.beta * torch.mean((z_q - z.detach()) ** 2)
+            if self.legacy
+            else self.beta * torch.mean((z_q.detach() - z) ** 2)
+            + torch.mean((z_q - z.detach()) ** 2)
+        )
         # preserve gradients
         z_q = z + (z_q - z).detach()
 

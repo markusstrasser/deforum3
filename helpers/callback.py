@@ -18,7 +18,7 @@ class SamplerCallback(object):
         self.dynamic_threshold = args.dynamic_threshold
         self.static_threshold = args.static_threshold
         self.mask = mask
-        self.init_latent = init_latent 
+        self.init_latent = init_latent
         self.sigmas = sigmas
         self.sampler = sampler
         self.verbose = verbose
@@ -43,14 +43,13 @@ class SamplerCallback(object):
         elif len(sigmas) == 0:
             self.mask = None # no mask needed if no steps (usually happens because strength==1.0)
 
-        if self.sampler_name in ["plms","ddim"]: 
+        if self.sampler_name in ["plms","ddim"]:
             if mask is not None:
                 assert sampler is not None, "Callback function for stable-diffusion samplers requires sampler variable"
 
-        if self.sampler_name in ["plms","ddim"]: 
             # Callback function formated for compvis latent diffusion samplers
             self.callback = self.img_callback_
-        else: 
+        else:
             # Default callback function uses k-diffusion sampler variables
             self.callback = self.k_callback_
 

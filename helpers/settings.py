@@ -2,7 +2,7 @@ import os
 import json
 
 def load_args(args_dict, anim_args_dict, settings_file, custom_settings_file, verbose=True):
-    default_settings_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'settings'))  
+    default_settings_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'settings'))
     if settings_file.lower() == 'custom':
         settings_filename = custom_settings_file
     else:
@@ -17,18 +17,16 @@ def load_args(args_dict, anim_args_dict, settings_file, custom_settings_file, ve
             jdata = json.loads(f.read())
             if jdata.get("prompts") is not None:
                 animation_prompts = jdata["prompts"]
-            for i, k in enumerate(args_dict):
+            for k in args_dict:
                 if k in jdata:
                     args_dict[k] = jdata[k]
-                else:
-                    if verbose:
-                        print(f"key {k} doesn't exist in the custom settings data! using the default value of {args_dict[k]}")
-            for i, k in enumerate(anim_args_dict):
+                elif verbose:
+                    print(f"key {k} doesn't exist in the custom settings data! using the default value of {args_dict[k]}")
+            for k in anim_args_dict:
                 if k in jdata:
                     anim_args_dict[k] = jdata[k]
-                else:
-                    if verbose:
-                        print(f"key {k} doesn't exist in the custom settings data! using the default value of {anim_args_dict[k]}")
+                elif verbose:
+                    print(f"key {k} doesn't exist in the custom settings data! using the default value of {anim_args_dict[k]}")
             if verbose:
                 print(args_dict)
                 print(anim_args_dict)

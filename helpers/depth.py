@@ -156,47 +156,46 @@ class DepthModel():
                     adabins_depth = adabins_depth.cpu().numpy()
                 adabins_depth = adabins_depth.squeeze()
             except:
-                print(f"  exception encountered, falling back to pure MiDaS")
+                print("  exception encountered, falling back to pure MiDaS")
                 use_adabins = False
             torch.cuda.empty_cache()
 
-        if self.midas_model is not None:
-            # convert image from 0->255 uint8 to 0->1 float for feeding to MiDaS
-            img_midas = prev_img_cv2.astype(np.float32) / 255.0
-            img_midas_input = self.midas_transform({"image": img_midas})["image"]
+        if self.midas_model is None:
+            return torch.ones((h, w), device=self.device)
 
-            # MiDaS depth estimation implementation
-            sample = torch.from_numpy(img_midas_input).float().to(self.device).unsqueeze(0)
-            if self.device == torch.device("cuda"):
-                sample = sample.to(memory_format=torch.channels_last)  
-                sample = sample.half()
-            with torch.no_grad():            
-                midas_depth = self.midas_model.forward(sample)
-            midas_depth = torch.nn.functional.interpolate(
-                midas_depth.unsqueeze(1),
-                size=img_midas.shape[:2],
-                mode="bicubic",
-                align_corners=False,
-            ).squeeze()
-            midas_depth = midas_depth.cpu().numpy()
-            torch.cuda.empty_cache()
+        # convert image from 0->255 uint8 to 0->1 float for feeding to MiDaS
+        img_midas = prev_img_cv2.astype(np.float32) / 255.0
+        img_midas_input = self.midas_transform({"image": img_midas})["image"]
 
-            # MiDaS makes the near values greater, and the far values lesser. Let's reverse that and try to align with AdaBins a bit better.
-            midas_depth = np.subtract(50.0, midas_depth)
-            midas_depth = midas_depth / 19.0
+        # MiDaS depth estimation implementation
+        sample = torch.from_numpy(img_midas_input).float().to(self.device).unsqueeze(0)
+        if self.device == torch.device("cuda"):
+            sample = sample.to(memory_format=torch.channels_last)  
+            sample = sample.half()
+        with torch.no_grad():            
+            midas_depth = self.midas_model.forward(sample)
+        midas_depth = torch.nn.functional.interpolate(
+            midas_depth.unsqueeze(1),
+            size=img_midas.shape[:2],
+            mode="bicubic",
+            align_corners=False,
+        ).squeeze()
+        midas_depth = midas_depth.cpu().numpy()
+        torch.cuda.empty_cache()
+
+        # MiDaS makes the near values greater, and the far values lesser. Let's reverse that and try to align with AdaBins a bit better.
+        midas_depth = np.subtract(50.0, midas_depth)
+        midas_depth = midas_depth / 19.0
 
             # blend between MiDaS and AdaBins predictions
-            if use_adabins:
-                depth_map = midas_depth*anim_args.midas_weight + adabins_depth*(1.0-anim_args.midas_weight)
-            else:
-                depth_map = midas_depth
-
-            depth_map = np.expand_dims(depth_map, axis=0)
-            depth_tensor = torch.from_numpy(depth_map).squeeze().to(self.device)
-        else:
-            depth_tensor = torch.ones((h, w), device=self.device)
-        
-        return depth_tensor
+        depth_map = (
+            midas_depth * anim_args.midas_weight
+            + adabins_depth * (1.0 - anim_args.midas_weight)
+            if use_adabins
+            else midas_depth
+        )
+        depth_map = np.expand_dims(depth_map, axis=0)
+        return torch.from_numpy(depth_map).squeeze().to(self.device)
 
     def save(self, filename: str, depth: torch.Tensor, bit_depth_output):
         depth = depth.cpu().numpy()

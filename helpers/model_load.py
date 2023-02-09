@@ -82,11 +82,7 @@ def load_model(root, load_on_run_all=True, check_sha256=True, map_location="cuda
     except:
         ipy = 'could not get_ipython'
 
-    if 'google.colab' in str(ipy):
-        path_extend = "deforum-stable-diffusion"
-    else:
-        path_extend = ""
-
+    path_extend = "deforum-stable-diffusion" if 'google.colab' in ipy else ""
     model_map = {
         "Protogen_V2.2.ckpt": {
             'sha256': 'bb725eaf2ed90092e68b892a1d6262f538131a7ec6a736e50ae534be6b5bd7b1',
@@ -178,14 +174,9 @@ def load_model(root, load_on_run_all=True, check_sha256=True, map_location="cuda
     # config path
     ckpt_config_path = root.custom_config_path if root.model_config == "custom" else os.path.join(root.configs_path, root.model_config)
 
-    if os.path.exists(ckpt_config_path):
-        pass
-        #print(f"{ckpt_config_path} exists")
-    else:
+    if not os.path.exists(ckpt_config_path):
         #print(f"Warning: {ckpt_config_path} does not exist.")
         ckpt_config_path = os.path.join(path_extend,"configs",root.model_config)
-        #print(f"Using {ckpt_config_path} instead.")
-        
     ckpt_config_path = os.path.abspath(ckpt_config_path)
 
     # checkpoint path or download
@@ -199,7 +190,7 @@ def load_model(root, load_on_run_all=True, check_sha256=True, map_location="cuda
     else:
         print(f"Please download model checkpoint and place in {os.path.join(root.models_path, root.model_checkpoint)}")
         ckpt_valid = False
-        
+
     print(f"config_path: {ckpt_config_path}")
     print(f"ckpt_path: {ckpt_path}")
 
@@ -221,7 +212,7 @@ def load_model(root, load_on_run_all=True, check_sha256=True, map_location="cuda
             print("..could not verify model integrity")
 
     def load_model_from_config(config, ckpt, verbose=False, device='cuda', print_flag=False, map_location="cuda"):
-        print(f"..loading model")
+        print("..loading model")
         _ , extension = os.path.splitext(ckpt)
         if extension.lower() == ".safetensors":
             import safetensors.torch
@@ -265,26 +256,25 @@ def get_model_output_paths(root):
     models_path = root.models_path
     output_path = root.output_path
 
-    #@markdown **Google Drive Path Variables (Optional)**
-    
-    force_remount = False
-
     try:
         ipy = get_ipython()
     except:
         ipy = 'could not get_ipython'
 
-    if 'google.colab' in str(ipy):
-        if root.mount_google_drive:
-            from google.colab import drive # type: ignore
-            try:
-                drive_path = "/content/drive"
-                drive.mount(drive_path,force_remount=force_remount)
-                models_path = root.models_path_gdrive
-                output_path = root.output_path_gdrive
-            except:
-                print("..error mounting drive or with drive path variables")
-                print("..reverting to default path variables")
+    if 'google.colab' in ipy and root.mount_google_drive:
+        from google.colab import drive # type: ignore
+        #@markdown **Google Drive Path Variables (Optional)**
+
+        force_remount = False
+
+        try:
+            drive_path = "/content/drive"
+            drive.mount(drive_path,force_remount=force_remount)
+            models_path = root.models_path_gdrive
+            output_path = root.output_path_gdrive
+        except:
+            print("..error mounting drive or with drive path variables")
+            print("..reverting to default path variables")
 
     models_path = os.path.abspath(models_path)
     output_path = os.path.abspath(output_path)

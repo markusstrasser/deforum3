@@ -13,11 +13,7 @@ def load_img(path, shape=None, use_alpha_as_mask=False):
     else:
         image = Image.open(path)
 
-    if use_alpha_as_mask:
-        image = image.convert('RGBA')
-    else:
-        image = image.convert('RGB')
-
+    image = image.convert('RGBA') if use_alpha_as_mask else image.convert('RGB')
     if shape is not None:
         image = image.resize(shape, resample=Image.LANCZOS)
 

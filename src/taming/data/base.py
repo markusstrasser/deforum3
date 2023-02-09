@@ -25,16 +25,17 @@ class ImagePaths(Dataset):
         self.size = size
         self.random_crop = random_crop
 
-        self.labels = dict() if labels is None else labels
+        self.labels = {} if labels is None else labels
         self.labels["file_path_"] = paths
         self._length = len(paths)
 
         if self.size is not None and self.size > 0:
             self.rescaler = albumentations.SmallestMaxSize(max_size = self.size)
-            if not self.random_crop:
-                self.cropper = albumentations.CenterCrop(height=self.size,width=self.size)
-            else:
-                self.cropper = albumentations.RandomCrop(height=self.size,width=self.size)
+            self.cropper = (
+                albumentations.RandomCrop(height=self.size, width=self.size)
+                if self.random_crop
+                else albumentations.CenterCrop(height=self.size, width=self.size)
+            )
             self.preprocessor = albumentations.Compose([self.rescaler, self.cropper])
         else:
             self.preprocessor = lambda **kwargs: kwargs
@@ -44,7 +45,7 @@ class ImagePaths(Dataset):
 
     def preprocess_image(self, image_path):
         image = Image.open(image_path)
-        if not image.mode == "RGB":
+        if image.mode != "RGB":
             image = image.convert("RGB")
         image = np.array(image).astype(np.uint8)
         image = self.preprocessor(image=image)["image"]
@@ -52,8 +53,7 @@ class ImagePaths(Dataset):
         return image
 
     def __getitem__(self, i):
-        example = dict()
-        example["image"] = self.preprocess_image(self.labels["file_path_"][i])
+        example = {"image": self.preprocess_image(self.labels["file_path_"][i])}
         for k in self.labels:
             example[k] = self.labels[k][i]
         return example

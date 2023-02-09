@@ -33,13 +33,10 @@ class ToTensor(object):
 
     def to_tensor(self, pic):
         if not (_is_pil_image(pic) or _is_numpy_image(pic)):
-            raise TypeError(
-                'pic should be PIL Image or ndarray. Got {}'.format(type(pic)))
+            raise TypeError(f'pic should be PIL Image or ndarray. Got {type(pic)}')
 
         if isinstance(pic, np.ndarray):
-            img = torch.from_numpy(pic.transpose((2, 0, 1)))
-            return img
-
+            return torch.from_numpy(pic.transpose((2, 0, 1)))
         # handle PIL Image
         if pic.mode == 'I':
             img = torch.from_numpy(np.array(pic, np.int32, copy=False))
@@ -48,19 +45,16 @@ class ToTensor(object):
         else:
             img = torch.ByteTensor(torch.ByteStorage.from_buffer(pic.tobytes()))
         # PIL image mode: 1, L, P, I, F, RGB, YCbCr, RGBA, CMYK
-        if pic.mode == 'YCbCr':
-            nchannel = 3
-        elif pic.mode == 'I;16':
+        if pic.mode == 'I;16':
             nchannel = 1
+        elif pic.mode == 'YCbCr':
+            nchannel = 3
         else:
             nchannel = len(pic.mode)
         img = img.view(pic.size[1], pic.size[0], nchannel)
 
         img = img.transpose(0, 1).transpose(0, 2).contiguous()
-        if isinstance(img, torch.ByteTensor):
-            return img.float()
-        else:
-            return img
+        return img.float() if isinstance(img, torch.ByteTensor) else img
 
 
 class InferenceHelper:
@@ -80,7 +74,7 @@ class InferenceHelper:
             model = UnetAdaptiveBins.build(n_bins=256, min_val=self.min_depth, max_val=self.max_depth)
             pretrained_path = "./models/AdaBins_kitti.pt"
         else:
-            raise ValueError("dataset can be either 'nyu' or 'kitti' but got {}".format(dataset))
+            raise ValueError(f"dataset can be either 'nyu' or 'kitti' but got {dataset}")
 
         model, _, _ = model_io.load_checkpoint(pretrained_path, model)
         model.eval()
@@ -143,7 +137,7 @@ class InferenceHelper:
 
             final = (final * self.saving_factor).astype('uint16')
             basename = os.path.basename(f).split('.')[0]
-            save_path = os.path.join(out_dir, basename + ".png")
+            save_path = os.path.join(out_dir, f"{basename}.png")
 
             Image.fromarray(final.squeeze()).save(save_path)
 

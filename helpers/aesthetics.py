@@ -36,12 +36,15 @@ def load_aesthetics_model(args,root):
         "ViT-B/16": "sac_public_2022_06_29_vit_b_16_linear.pth",
         "ViT-L/14": "sac_public_2022_06_29_vit_l_14_linear.pth",
     }
-    
+
     if not os.path.exists(os.path.join(root.models_path,model_name[args.clip_name])):
-    	print("Downloading aesthetics model...")
-    	os.makedirs(root.models_path, exist_ok=True)
-    	wget("https://github.com/crowsonkb/simulacra-aesthetic-models/raw/master/models/"+model_name[args.clip_name], root.models_path)
-    
+        print("Downloading aesthetics model...")
+        os.makedirs(root.models_path, exist_ok=True)
+        wget(
+            f"https://github.com/crowsonkb/simulacra-aesthetic-models/raw/master/models/{model_name[args.clip_name]}",
+            root.models_path,
+        )
+
     aesthetics_model = AestheticMeanPredictionLinearModel(clip_size[args.clip_name])
     aesthetics_model.load_state_dict(torch.load(os.path.join(root.models_path,model_name[args.clip_name])))
 

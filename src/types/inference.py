@@ -26,12 +26,15 @@ ImageType = Union[JpegImageFile, PngImageFile, GifImageFile, TiffImageFile, Imag
 
 
 def is_image(v):
-    return (
-        isinstance(v, PngImageFile)
-        or isinstance(v, JpegImageFile)
-        or isinstance(v, GifImageFile)
-        or isinstance(v, TiffImageFile)
-        or isinstance(v, Image.Image)
+    return isinstance(
+        v,
+        (
+            PngImageFile,
+            JpegImageFile,
+            GifImageFile,
+            TiffImageFile,
+            Image.Image,
+        ),
     )
 
 
@@ -39,15 +42,18 @@ def is_image(v):
 def validate_image(v, throw=True):
     if v is None:
         return v
-    elif (
-        isinstance(v, PngImageFile)
-        or isinstance(v, JpegImageFile)
-        or isinstance(v, GifImageFile)
-        or isinstance(v, TiffImageFile)
-        or isinstance(v, Image.Image)
+    elif isinstance(
+        v,
+        (
+            PngImageFile,
+            JpegImageFile,
+            GifImageFile,
+            TiffImageFile,
+            Image.Image,
+        ),
     ):
         return v
-    elif isinstance(v, bytes) or isinstance(v, io.BytesIO):
+    elif isinstance(v, (bytes, io.BytesIO)):
         return v
     elif isinstance(v, str):
         if validators.url(v):
@@ -72,18 +78,16 @@ def validate_image(v, throw=True):
                     ) from err
                 else:
                     return False
-        else:
-            if throw:
-                raise ValueError("Invalid string, no image or remote url")
-            else:
-                return False
-    else:
-        if throw:
-            raise ValueError(
-                f"Bad image type. Expected: bytes, Image, or Image url. Got: {debug.format(v)}"
-            )
+        elif throw:
+            raise ValueError("Invalid string, no image or remote url")
         else:
             return False
+    elif throw:
+        raise ValueError(
+            f"Bad image type. Expected: bytes, Image, or Image url. Got: {debug.format(v)}"
+        )
+    else:
+        return False
 
 
 def output_folder_factory(output_path="outputs", batch_folder="deforum"):

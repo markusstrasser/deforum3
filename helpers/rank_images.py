@@ -59,11 +59,10 @@ for path in tqdm(filepaths):
     if len(scores) < args.top_n:
         scores.append((score.item(),path))
         scores.sort()
-    else:
-        if scores[0][0] < score:
-            scores.append((score.item(),path))
-            scores.sort(key=lambda x: x[0])
-            scores = scores[1:]
-            
+    elif scores[0][0] < score:
+        scores.append((score.item(),path))
+        scores.sort(key=lambda x: x[0])
+        scores = scores[1:]
+
 for score, path in scores:
     print(f"{score}: {path}")
