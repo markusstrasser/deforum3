@@ -543,8 +543,7 @@ class Translate(Transform3d):
         """
         inv_mask = self._matrix.new_ones([1, 4, 4])
         inv_mask[0, 3, :3] = -1.0
-        i_matrix = self._matrix * inv_mask
-        return i_matrix
+        return self._matrix * inv_mask
 
 class Rotate(Transform3d):
     def __init__(
@@ -646,9 +645,8 @@ class TensorAccessor(nn.Module):
         """
         if hasattr(self.class_object, name):
             return self.class_object.__dict__[name][self.index]
-        else:
-            msg = "Attribute %s not found on %r"
-            return AttributeError(msg % (name, self.class_object.__name__))
+        msg = "Attribute %s not found on %r"
+        return AttributeError(msg % (name, self.class_object.__name__))
 
 BROADCAST_TYPES = (float, int, list, tuple, torch.Tensor, np.ndarray)
 
@@ -689,10 +687,7 @@ class TensorProperties(nn.Module):
                     warnings.warn(msg % (k, type(v)))
 
             names = args_to_broadcast.keys()
-            # convert from type dict.values to tuple
-            values = tuple(v for v in args_to_broadcast.values())
-
-            if len(values) > 0:
+            if values := tuple(args_to_broadcast.values()):
                 broadcasted_values = convert_to_tensors_and_broadcast(
                     *values, device=device
                 )
@@ -754,10 +749,7 @@ class TensorProperties(nn.Module):
             v = getattr(self, k)
             if inspect.ismethod(v) or k.startswith("__"):
                 continue
-            if torch.is_tensor(v):
-                v_clone = v.clone()
-            else:
-                v_clone = copy.deepcopy(v)
+            v_clone = v.clone() if torch.is_tensor(v) else copy.deepcopy(v)
             setattr(other, k, v_clone)
         return other
 
@@ -796,30 +788,31 @@ class TensorProperties(nn.Module):
         # Iterate through the attributes of the class which are tensors.
         for k in dir(self):
             v = getattr(self, k)
-            if torch.is_tensor(v):
-                if v.shape[0] > 1:
-                    # There are different values for each batch element
-                    # so gather these using the batch_idx.
-                    # First clone the input batch_idx tensor before
-                    # modifying it.
-                    _batch_idx = batch_idx.clone()
-                    idx_dims = _batch_idx.shape
-                    tensor_dims = v.shape
-                    if len(idx_dims) > len(tensor_dims):
-                        msg = "batch_idx cannot have more dimensions than %s. "
-                        msg += "got shape %r and %s has shape %r"
-                        raise ValueError(msg % (k, idx_dims, k, tensor_dims))
-                    if idx_dims != tensor_dims:
-                        # To use torch.gather the index tensor (_batch_idx) has
-                        # to have the same shape as the input tensor.
-                        new_dims = len(tensor_dims) - len(idx_dims)
-                        new_shape = idx_dims + (1,) * new_dims
-                        expand_dims = (-1,) + tensor_dims[1:]
-                        _batch_idx = _batch_idx.view(*new_shape)
-                        _batch_idx = _batch_idx.expand(*expand_dims)
+            if torch.is_tensor(v) and v.shape[0] > 1:
+                # There are different values for each batch element
+                # so gather these using the batch_idx.
+                # First clone the input batch_idx tensor before
+                # modifying it.
+                _batch_idx = batch_idx.clone()
+                idx_dims = _batch_idx.shape
+                tensor_dims = v.shape
+                if len(idx_dims) > len(tensor_dims):
+                    msg = (
+                        "batch_idx cannot have more dimensions than %s. "
+                        + "got shape %r and %s has shape %r"
+                    )
+                    raise ValueError(msg % (k, idx_dims, k, tensor_dims))
+                if idx_dims != tensor_dims:
+                    # To use torch.gather the index tensor (_batch_idx) has
+                    # to have the same shape as the input tensor.
+                    new_dims = len(tensor_dims) - len(idx_dims)
+                    new_shape = idx_dims + (1,) * new_dims
+                    expand_dims = (-1,) + tensor_dims[1:]
+                    _batch_idx = _batch_idx.view(*new_shape)
+                    _batch_idx = _batch_idx.expand(*expand_dims)
 
-                    v = v.gather(0, _batch_idx)
-                    setattr(self, k, v)
+                v = v.gather(0, _batch_idx)
+                setattr(self, k, v)
         return self
 
 class CamerasBase(TensorProperties):
@@ -952,11 +945,7 @@ class CamerasBase(TensorProperties):
         """
         w2v_trans = self.get_world_to_view_transform(**kwargs)
         P = w2v_trans.inverse().get_matrix()
-        # the camera center is the translation component (the first 3 elements
-        # of the last row) of the inverted world-to-view
-        # transform (4x4 RT matrix)
-        C = P[:, 3, :3]
-        return C
+        return P[:, 3, :3]
 
     def get_world_to_view_transform(self, **kwargs) -> Transform3d:
         """
@@ -976,8 +965,7 @@ class CamerasBase(TensorProperties):
         T: torch.Tensor = kwargs.get("T", self.T)
         self.R = R  # pyre-ignore[16]
         self.T = T  # pyre-ignore[16]
-        world_to_view_transform = get_world_to_view_transform(R=R, T=T)
-        return world_to_view_transform
+        return get_world_to_view_transform(R=R, T=T)
 
     def get_full_projection_transform(self, **kwargs) -> Transform3d:
         """
@@ -1043,18 +1031,17 @@ class CamerasBase(TensorProperties):
         """
         if self.in_ndc():
             return Transform3d(device=self.device, dtype=torch.float32)
-        else:
-            # For custom cameras which can be defined in screen space,
-            # users might might have to implement the screen to NDC transform based
-            # on the definition of the camera parameters.
-            # See PerspectiveCameras/OrthographicCameras for an example.
-            # We don't flip xy because we assume that world points are in
-            # PyTorch3D coordinates, and thus conversion from screen to ndc
-            # is a mere scaling from image to [-1, 1] scale.
-            image_size = kwargs.get("image_size", self.get_image_size())
-            return get_screen_to_ndc_transform(
-                self, with_xyflip=False, image_size=image_size
-            )
+        # For custom cameras which can be defined in screen space,
+        # users might might have to implement the screen to NDC transform based
+        # on the definition of the camera parameters.
+        # See PerspectiveCameras/OrthographicCameras for an example.
+        # We don't flip xy because we assume that world points are in
+        # PyTorch3D coordinates, and thus conversion from screen to ndc
+        # is a mere scaling from image to [-1, 1] scale.
+        image_size = kwargs.get("image_size", self.get_image_size())
+        return get_screen_to_ndc_transform(
+            self, with_xyflip=False, image_size=image_size
+        )
 
     def transform_points_ndc(
         self, points, eps: Optional[float] = None, **kwargs
@@ -1363,11 +1350,7 @@ class FoVPerspectiveCameras(CamerasBase):
             ]
         """
         K = kwargs.get("K", self.K)
-        if K is not None:
-            if K.shape != (self._N, 4, 4):
-                msg = "Expected K to have shape of (%r, 4, 4)"
-                raise ValueError(msg % (self._N))
-        else:
+        if K is None:
             K = self.compute_projection_matrix(
                 kwargs.get("znear", self.znear),
                 kwargs.get("zfar", self.zfar),
@@ -1376,11 +1359,11 @@ class FoVPerspectiveCameras(CamerasBase):
                 kwargs.get("degrees", self.degrees),
             )
 
-        # Transpose the projection matrix as PyTorch3D transforms use row vectors.
-        transform = Transform3d(
+        elif K.shape != (self._N, 4, 4):
+            raise ValueError("Expected K to have shape of (%r, 4, 4)" % self._N)
+        return Transform3d(
             matrix=K.transpose(1, 2).contiguous(), device=self.device
         )
-        return transform
 
     def unproject_points(
         self,
@@ -1475,11 +1458,7 @@ def get_device(x, device: Optional[Device] = None) -> torch.device:
         return make_device(device)
 
     # Set device based on input tensor
-    if torch.is_tensor(x):
-        return x.device
-
-    # Default device is cpu
-    return torch.device("cpu")
+    return x.device if torch.is_tensor(x) else torch.device("cpu")
 
 def _axis_angle_rotation(axis: str, angle: torch.Tensor) -> torch.Tensor:
     """
@@ -1556,7 +1535,7 @@ def _broadcast_bmm(a, b) -> torch.Tensor:
     if a.dim() == 2:
         a = a[None]
     if len(a) != len(b):
-        if not ((len(a) == 1) or (len(b) == 1)):
+        if len(a) != 1 and len(b) != 1:
             msg = "Expected batch dim for bmm to be equal or 1; got %r, %r"
             raise ValueError(msg % (a.shape, b.shape))
         if len(a) == 1:
@@ -1576,13 +1555,14 @@ def _safe_det_3x3(t: torch.Tensor):
         Tensor of shape (N) with determinants.
     """
 
-    det = (
-        t[..., 0, 0] * (t[..., 1, 1] * t[..., 2, 2] - t[..., 1, 2] * t[..., 2, 1])
-        - t[..., 0, 1] * (t[..., 1, 0] * t[..., 2, 2] - t[..., 2, 0] * t[..., 1, 2])
-        + t[..., 0, 2] * (t[..., 1, 0] * t[..., 2, 1] - t[..., 2, 0] * t[..., 1, 1])
+    return (
+        t[..., 0, 0]
+        * (t[..., 1, 1] * t[..., 2, 2] - t[..., 1, 2] * t[..., 2, 1])
+        - t[..., 0, 1]
+        * (t[..., 1, 0] * t[..., 2, 2] - t[..., 2, 0] * t[..., 1, 2])
+        + t[..., 0, 2]
+        * (t[..., 1, 0] * t[..., 2, 1] - t[..., 2, 0] * t[..., 1, 1])
     )
-
-    return det
 
 def get_world_to_view_transform(
     R: torch.Tensor = _R, T: torch.Tensor = _T
@@ -1705,7 +1685,7 @@ def convert_to_tensors_and_broadcast(
 
     args_Nd = []
     for c in args_1d:
-        if c.shape[0] != 1 and c.shape[0] != N:
+        if c.shape[0] not in [1, N]:
             msg = "Got non-broadcastable sizes %r" % sizes
             raise ValueError(msg)
 
@@ -1776,7 +1756,7 @@ def _handle_input(
             msg = "Expected tensor of shape (N, 3); got %r (in %s)"
             raise ValueError(msg % (x.shape, name))
         if y is not None or z is not None:
-            msg = "Expected y and z to be None (in %s)" % name
+            msg = f"Expected y and z to be None (in {name})"
             raise ValueError(msg)
         return x.to(device=device_, dtype=dtype)
 
@@ -1791,7 +1771,7 @@ def _handle_input(
     sizes = [c.shape[0] for c in xyz]
     N = max(sizes)
     for c in xyz:
-        if c.shape[0] != 1 and c.shape[0] != N:
+        if c.shape[0] not in [1, N]:
             msg = "Got non-broadcastable sizes %r (in %s)" % (sizes, name)
             raise ValueError(msg)
     xyz = [c.expand(N) for c in xyz]

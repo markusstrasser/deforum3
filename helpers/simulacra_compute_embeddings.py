@@ -30,8 +30,13 @@ class SimulacraDataset(data.Dataset):
         self.transform = transform
         self.conn = sqlite3.connect(db)
         self.ratings = []
-        for row in self.conn.execute('SELECT generations.id, images.idx, paths.path, AVG(ratings.rating) FROM images JOIN generations ON images.gid=generations.id JOIN ratings ON images.id=ratings.iid JOIN paths ON images.id=paths.iid GROUP BY images.id'):
-            self.ratings.append(row)
+        self.ratings.extend(
+            iter(
+                self.conn.execute(
+                    'SELECT generations.id, images.idx, paths.path, AVG(ratings.rating) FROM images JOIN generations ON images.gid=generations.id JOIN ratings ON images.id=ratings.iid JOIN paths ON images.id=paths.iid GROUP BY images.id'
+                )
+            )
+        )
 
     def __len__(self):
         return len(self.ratings)

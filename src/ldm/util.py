@@ -12,7 +12,7 @@ def log_txt_as_img(wh, xc, size=10):
     # wh a tuple of (width, height)
     # xc a list of captions to plot
     b = len(xc)
-    txts = list()
+    txts = []
     for bi in range(b):
         txt = Image.new("RGB", wh, color="white")
         draw = ImageDraw.Draw(txt)
@@ -33,15 +33,19 @@ def log_txt_as_img(wh, xc, size=10):
 
 
 def ismap(x):
-    if not isinstance(x, torch.Tensor):
-        return False
-    return (len(x.shape) == 4) and (x.shape[1] > 3)
+    return (
+        (len(x.shape) == 4) and (x.shape[1] > 3)
+        if isinstance(x, torch.Tensor)
+        else False
+    )
 
 
 def isimage(x):
-    if not isinstance(x,torch.Tensor):
-        return False
-    return (len(x.shape) == 4) and (x.shape[1] == 3 or x.shape[1] == 1)
+    return (
+        len(x.shape) == 4 and x.shape[1] in [3, 1]
+        if isinstance(x, torch.Tensor)
+        else False
+    )
 
 
 def exists(x):
@@ -63,11 +67,7 @@ def mean_flat(tensor):
 
 
 def count_params(model, verbose=False):
-    total_params = sum(p.numel() for p in model.parameters())
-    if verbose:
-        pass
-        #print(f"{model.__class__.__name__} has {total_params*1.e-6:.2f} M params.")
-    return total_params
+    return sum(p.numel() for p in model.parameters())
 
 
 def instantiate_from_config(config):
@@ -94,18 +94,18 @@ class AdamWwithEMAandWings(optim.Optimizer):
                  weight_decay=1.e-2, amsgrad=False, ema_decay=0.9999,   # ema decay to match previous code
                  ema_power=1., param_names=()):
         """AdamW that saves EMA versions of the parameters."""
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
-        if not 0.0 <= eps:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
+        if lr < 0.0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if eps < 0.0:
+            raise ValueError(f"Invalid epsilon value: {eps}")
         if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
+            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
         if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
-        if not 0.0 <= weight_decay:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
+            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
+        if weight_decay < 0.0:
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
         if not 0.0 <= ema_decay <= 1.0:
-            raise ValueError("Invalid ema_decay value: {}".format(ema_decay))
+            raise ValueError(f"Invalid ema_decay value: {ema_decay}")
         defaults = dict(lr=lr, betas=betas, eps=eps,
                         weight_decay=weight_decay, amsgrad=amsgrad, ema_decay=ema_decay,
                         ema_power=ema_power, param_names=param_names)

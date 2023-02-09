@@ -69,16 +69,14 @@ def next_seed(args):
         else:
             args.seed -= 1
             args.seed_internal = 0
-    elif args.seed_behavior == 'fixed':
-        pass # always keep seed the same
-    else:
+    elif args.seed_behavior != 'fixed':
         args.seed = random.randint(0, 2**32 - 1)
     return args.seed
 
 def render_image_batch(args, prompts, root):
     args.prompts = {k: f"{v:05d}" for v, k in enumerate(prompts)}
     args.using_vid_init = False
-    
+
     # create output folder for the batch
     os.makedirs(args.outdir, exist_ok=True)
     if args.save_settings or args.save_samples:
@@ -91,7 +89,7 @@ def render_image_batch(args, prompts, root):
             json.dump(dict(args.__dict__), f, ensure_ascii=False, indent=4)
 
     index = 0
-    
+
     # function for init image batching
     init_array = []
     if args.use_init:
@@ -101,10 +99,12 @@ def render_image_batch(args, prompts, root):
             init_array.append(args.init_image)
         elif not os.path.isfile(args.init_image):
             if args.init_image[-1] != "/": # avoids path error by adding / to end if not there
-                args.init_image += "/" 
-            for image in sorted(os.listdir(args.init_image)): # iterates dir and appends images to init_array
-                if image.split(".")[-1] in ("png", "jpg", "jpeg"):
-                    init_array.append(args.init_image + image)
+                args.init_image += "/"
+            init_array.extend(
+                args.init_image + image
+                for image in sorted(os.listdir(args.init_image))
+                if image.split(".")[-1] in ("png", "jpg", "jpeg")
+            )
         else:
             init_array.append(args.init_image)
     else:
@@ -125,7 +125,7 @@ def render_image_batch(args, prompts, root):
             if clear_between_batches and batch_index % 32 == 0: 
                 display.clear_output(wait=True)            
             print(f"Batch {batch_index+1} of {args.n_batch}")
-            
+
             for image in init_array: # iterates the init images
                 args.init_image = image
                 results = generate(args, root)

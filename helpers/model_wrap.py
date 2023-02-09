@@ -50,10 +50,7 @@ class CFGDenoiserWithGrad(CompVisDenoiser):
         # Parse loss function-scale pairs
         cond_fns = []
         for loss_fn,scale in loss_fns_scales:
-            if scale != 0:
-                cond_fn = self.make_cond_fn(loss_fn, scale)
-            else:
-                cond_fn = None
+            cond_fn = self.make_cond_fn(loss_fn, scale) if scale != 0 else None
             cond_fns += [cond_fn]
         self.cond_fns = cond_fns
 
@@ -206,15 +203,14 @@ class CFGDenoiserWithGrad(CompVisDenoiser):
     def check_conditioning_schedule(self, sigma):
         is_conditioning_step = False
 
-        if (self.cond_fns is not None and 
-            any(cond_fn is not None for cond_fn in self.cond_fns)):
-            # Conditioning strength != 0
-            # Check if this is a conditioning step
-            if self.grad_inject_timing_fn(sigma):
-                is_conditioning_step = True
+        if (
+            self.cond_fns is not None
+            and any(cond_fn is not None for cond_fn in self.cond_fns)
+        ) and self.grad_inject_timing_fn(sigma):
+            is_conditioning_step = True
 
-                if self.verbose:
-                    print(f"Conditioning step for sigma={sigma}")
+            if self.verbose:
+                print(f"Conditioning step for sigma={sigma}")
 
         return is_conditioning_step
 

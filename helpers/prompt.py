@@ -41,19 +41,18 @@ def get_learned_conditioning(model, weighted_subprompts, text, args, sign = 1):
         
     return c
 
-def parse_weight(match, frame = 0)->float:
+def parse_weight(match, frame = 0) -> float:
     import numexpr
     w_raw = match.group("weight")
-    if w_raw == None:
+    if w_raw is None:
         return 1
     if check_is_number(w_raw):
         return float(w_raw)
-    else:
-        t = frame
-        if len(w_raw) < 3:
-            print('the value inside `-characters cannot represent a math function')
-            return 1
-        return float(numexpr.evaluate(w_raw[1:-1]))
+    t = frame
+    if len(w_raw) < 3:
+        print('the value inside `-characters cannot represent a math function')
+        return 1
+    return float(numexpr.evaluate(w_raw[1:-1]))
 
 def normalize_prompt_weights(parsed_prompts):
     if len(parsed_prompts) == 0:
@@ -114,15 +113,15 @@ def log_tokenization(text, model, log=False, weight=1):
     discarded = ""
     usedTokens = 0
     totalTokens = len(tokens)
-    for i in range(0, totalTokens):
+    for i in range(totalTokens):
         token = tokens[i].replace('</w>', ' ')
         # alternate color
         s = (usedTokens % 6) + 1
         if i < model.cond_stage_model.max_length:
-            tokenized = tokenized + f"\x1b[0;3{s};40m{token}"
+            tokenized = f"{tokenized}\x1b[0;3{s};40m{token}"
             usedTokens += 1
         else:  # over max token length
-            discarded = discarded + f"\x1b[0;3{s};40m{token}"
+            discarded = f"{discarded}\x1b[0;3{s};40m{token}"
     print(f"\n>> Tokens ({usedTokens}), Weight ({weight:.2f}):\n{tokenized}\x1b[0m")
     if discarded != "":
         print(
