@@ -14,7 +14,7 @@ apt install ffmpeg --yes
 pip install gdown
 gdown https://drive.google.com/uc?id=1WKvz3BuGKNvKblHmLHW_xLAxg3p-ymCb
 mv v1-5-pruned.ckpt models/v1-5-pruned.ckpt
-#!gdown https://drive.google.com/uc?id=1ftOA3u-5hNUPvJ-sGoQ-VPFvn7vjRn5G
-#!mv openjourney-v2.ckpt models/openjourney-v2.ckpt
-gdown https://drive.google.com/uc?id=1X6IiROWHXV1xcECey0DE8oEfTbOxuntS
-mv openjourney-v2-unpruned.ckpt models/openjourney-v2-unpruned.ckpt
+#gdown https://drive.google.com/uc?id=1ftOA3u-5hNUPvJ-sGoQ-VPFvn7vjRn5G
+#mv openjourney-v2.ckpt models/openjourney-v2.ckpt
+#gdown https://drive.google.com/uc?id=1X6IiROWHXV1xcECey0DE8oEfTbOxuntS
+#mv openjourney-v2-unpruned.ckpt models/openjourney-v2-unpruned.ckpt
