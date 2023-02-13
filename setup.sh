@@ -13,8 +13,11 @@ apt install ffmpeg --yes
 
 pip install gdown
 gdown https://drive.google.com/uc?id=1WKvz3BuGKNvKblHmLHW_xLAxg3p-ymCb
+#wget https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned.ckpt
 mv v1-5-pruned.ckpt models/v1-5-pruned.ckpt
+
 #gdown https://drive.google.com/uc?id=1ftOA3u-5hNUPvJ-sGoQ-VPFvn7vjRn5G
 #mv openjourney-v2.ckpt models/openjourney-v2.ckpt
-gdown https://drive.google.com/uc?id=1X6IiROWHXV1xcECey0DE8oEfTbOxuntS
-mv openjourneyv2-unpruned.ckpt models/openjourneyv2-unpruned.ckpt
+#gdown https://drive.google.com/uc?id=1X6IiROWHXV1xcECey0DE8oEfTbOxuntS
+wget https://huggingface.co/prompthero/openjourney-v2/resolve/main/openjourney-v2-unpruned.ckpt
+mv openjourney-v2-unpruned.ckpt models/openjourney-v2-unpruned.ckpt
